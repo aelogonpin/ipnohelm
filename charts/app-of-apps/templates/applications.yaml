@@ -1,0 +1,68 @@
+{{- range $app := .Values.applications }}
+{{- if (hasKey $app "enabled" | ternary $app.enabled true) }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $app.name }}
+  namespace: {{ $.Values.argocdNamespace | default "argocd" }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  {{- if $app.annotations }}
+  annotations:
+    {{- toYaml $app.annotations | nindent 4 }}
+  {{- end }}
+  {{- if $app.labels }}
+  labels:
+    {{- toYaml $app.labels | nindent 4 }}
+  {{- end }}
+spec:
+  project: {{ $app.project | default "default" }}
+  source:
+    repoURL: {{ $app.repoURL | default $.Values.defaultRepoURL }}
+    {{- if $app.targetRevision }}
+    targetRevision: {{ $app.targetRevision | quote }}
+    {{- else if $.Values.defaultTargetRevision }}
+    targetRevision: {{ $.Values.defaultTargetRevision | quote }}
+    {{- end }}
+    {{- if $app.chart }}
+    chart: {{ $app.chart }}
+    {{- else if $app.path }}
+    path: {{ $app.path }}
+    {{- end }}
+    {{- if or $app.values $app.helm }}
+    helm:
+      {{- if $app.helm }}
+      {{- toYaml $app.helm | nindent 6 }}
+      {{- end }}
+      {{- if $app.values }}
+      values: |
+        {{- toYaml $app.values | nindent 8 }}
+      {{- end }}
+    {{- end }}
+  destination:
+    server: {{ $app.destinationServer | default "https://kubernetes.default.svc" }}
+    namespace: {{ $app.destinationNamespace | default $app.name }}
+  {{- if $app.syncPolicy }}
+  syncPolicy:
+    {{- toYaml $app.syncPolicy | nindent 4 }}
+  {{- else if (hasKey $app "autoSync" | ternary $app.autoSync false) }}
+  syncPolicy:
+    automated:
+      prune: {{ hasKey $app "prune" | ternary $app.prune false }}
+      selfHeal: {{ hasKey $app "selfHeal" | ternary $app.selfHeal false }}
+    {{- if $app.syncOptions }}
+    syncOptions:
+      {{- toYaml $app.syncOptions | nindent 6 }}
+    {{- else }}
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    {{- end }}
+  {{- else if $app.syncOptions }}
+  syncPolicy:
+    syncOptions:
+      {{- toYaml $app.syncOptions | nindent 6 }}
+  {{- end }}
+{{- end }}
+{{- end }}

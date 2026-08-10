@@ -1,0 +1,7 @@
+# Configuración por defecto del motor app-of-apps
+argocdNamespace: "argocd"
+defaultRepoURL: ""
+defaultTargetRevision: "HEAD"
+
+# Lista de aplicaciones a renderizar dinámicamente
+applications: []
