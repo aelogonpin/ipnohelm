@@ -2,12 +2,9 @@ name: Publish Helm Chart to GHCR (OCI Registry)
 
 on:
   push:
-    branches:
-      - main
-      - master
-    paths:
-      - 'charts/app-of-apps/**'
-      - '.github/workflows/release-oci.yaml'
+    tags:
+      - 'v*'
+      - '*'
 
 jobs:
   publish-oci:
@@ -31,7 +28,14 @@ jobs:
       - name: Package and Push Helm Chart
         run: |
           mkdir -p .dist
-          helm package charts/app-of-apps -d .dist
+          # Usa la versión del Tag si existe (reemplazando la 'v' inicial)
+          TAG_VERSION=${GITHUB_REF_NAME#v}
+          if [ -n "$TAG_VERSION" ]; then
+            echo "Empaquetando chart con versión de Tag: $TAG_VERSION"
+            helm package charts/app-of-apps --version "$TAG_VERSION" --app-version "$TAG_VERSION" -d .dist
+          else
+            helm package charts/app-of-apps -d .dist
+          fi
           PACKAGE_FILE=$(ls .dist/app-of-apps-*.tgz)
           echo "Empaquetado $PACKAGE_FILE. Subiendo a GHCR..."
           helm push "$PACKAGE_FILE" "oci://ghcr.io/${{ github.repository_owner }}/charts"
